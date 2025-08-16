@@ -1,112 +1,252 @@
-# OmniCRUD
+# OmniQuery
 
 ## 1 - Abstract
 
 ***The State of Union.***
 
-OmniCRUD is a series of JSON formats and conventions for state serialization and for simultaneous
-querying across diverse databases.
+OmniQuery (OQ, or OmniQuery Language - OQL / "Ockle") is a LISP dialect for database-agnostic
+querying.
 
 ## 2 - Contents
 
-### 2.1 - Conventions
+### 2.1 - Language
 
-#### 2.1.1 - Format Objects
+#### 2.1.1 - Conventions
 
-A format object is a JSON object which contains two fields, "format", containing a string
-specifying the alias of said format, and "content", containing a string, object, or list specifying
-content in said format.
+##### 2.1.1.1 - Dynamic LISP
 
-Optionally, a format object may have an additional "properties" field, containing a miscellaneous
-value specifying additional information about the format object.
+Dynamic LISP is a LISP convention which allows values in lists to have keys.
 
-Environments may support various formats, assigning each an alias. Some environments may restrict
-certain formats for security reasons.
+A value with a key in a dynamic LISP list shall itself be nested as the third value in a sublist
+added in its place to the list to which it belongs, where the first value or operator of said
+sublist is a colon and the second value is the key.
 
-#### 2.1.1.1 - Selectors
+By default, value keys should be strings.
 
-Format objects may be used to specify selectors for hierarchical data structures.
+For example:
 
-Such formats for JSON are listed below, in order from most safe to least safe:
+    (value1 (: "key" value2))
 
-- [JMESPath](https://jmespath.org/)
-- [JSONata](https://jsonata.org/)
-- [JSONPath](https://goessner.net/articles/JsonPath/)
-- [JSONPath-Plus](https://github.com/JSONPath-Plus/JSONPath)
+In the context of dynamic LISP, keyed values can be called dynamic values, and lists featuring
+dynamic values can be called dynamic lists. These concepts may be applied beyond dynamic LISP.
 
-#### 2.1.1.2 - Transforms
+Dynamic list values, be they dynamic or not, may be indexed by index or key.
 
-Format objects may be used to specify transformations for data structures.
+###### 2.1.1.1.1 - Cross Dialect Usage
 
-#### 2.1.2 - Meta JSON
+If added to other list dialects, dynamic lists can be injected using the dynamic operator, which
+resolves to everything following itself and all content nested therein in the form of a dynamic
+list.
 
-Meta JSON is a JSON object format for assigning properties to JSON content without embedding said
-properties into the content itself.
+For example:
 
-A meta JSON object has two fields, "content", containing a JSON object or list, and "metadata",
-containing a list of metadata objects. Metadata objects have two fields, "selector", containing a
-JSON selector format object for selecting values within the aforementioned content, and
-"properties", containing a miscellaneous value to associate with the selected values.
+	(op arg1 (dynamic value1 (: "key" value2)) arg3)
 
-### 2.2 - OmniCRUD
+###### 2.1.1.1.2 - JSON Conversion
 
-#### 2.2.1 - JSON
+When converting a dynamic list to JSON, a dynamic list with no dynamic values shall become a JSON
+list, and a dynamic list with dynamic values shall become a JSON object, with the order of the
+elements of said list preserver in the resulting object, and with non-dynamic values in said list
+receiving the stringified form of their index as their key.
 
-##### 2.2.1.1 - JSON Database Mapping
+Ordinary lists within dynamic lists shall become JSON lists, non-stringified JSON compatible
+primitive atoms or LISP style equivalents (nil = null, etc), shall become JSON primitives, and all
+other atoms shall become JSON strings.
 
-The content and structure of a database, be it relational or NoSQL, may be partially or wholly
-mapped to JSON, with the properties of database and dataset (table, collection, etc.) assigned via
-meta JSON.
+##### 2.1.1.2 - Data
 
-Such a database may be called a JSON mapped database.
+###### 2.1.1.2.1 - State
 
-##### 2.2.1.2 - Target JSON
+OmniQuery is, in and of itself, stateless.
 
-A target JSON object is a JSON object with the fields "selector", containing a JSON selector format
-object specifying specific values within a JSON mapped database, and "address", containing a string
-specifying the address or alias of a database containing said values. Optionally, a JSON query
-object may have a "properties" field, containing a miscellaneous value which, among other things,
-may serve to specify access permissions.
+###### 2.1.1.2.2 - Contexts
 
-##### 2.2.1.3 - JSON Queries
+OmniQuery contexts are objects which act as cursors which point to specific databases and sets of
+data therein.
 
-A JSON query is a JSON object with the fields "type", containing a string specifying the operation
-(as "create", "read", "update", or "delete"), and "target", containing a target JSON object
-specifying the target to enact the query on. Optionally, a JSON query object may have a
-"properties" field, containing a miscellaneous value.
+###### 2.1.1.2.3 - Dynamic Mapping
 
-An update query shall also have the field "transform", containing a JSON transform format object to
-apply to the selected values.
+OmniQuery represents any database it interacts with, and the contexts it uses to interact with
+them, as dynamic lists. The resulting mapping is referred to as a dynamic mapped database (DMDB).
 
-A create field shall also have the field "content", containing a JSON value to assign or append to
-the selected values.
+As such, when a context is returned to an external environment, its contents are returned as a
+dynamic list. Usually, the returned contents are in the form JSON.
 
-JSON queries may be submitted as lists of JSON query objects.
+A relational database may be mapped to a dynamic list, where each table in the database is
+represented as a list dynamic value in said dynamic list, the key of the value being the name of
+the table and the value itself being the contents of the table.
 
-#### 2.2.2 - State
+Each element of said list shall be a dynamic list representing a row in said table, with each value
+of said list being a dynamic value and representing a column in said table, the key of the value
+being the name of the column, and the value itself being the value of the column, converted to a
+JSON compatible types.
 
-##### 2.2.2.1 - Subscriptions
+###### 2.1.1.2.4 - Type LISP
 
-OmniCRUD subscriptions event handlers tied to specific values within a JSON mapped database which
-trigger events when said values are altered, ideally with the previous and new values being passed
-to said event.
+Type LISP is a LISP convention where a value may be assigned metadata using a list where the
+operator is "type", where said value is the first argument, and where the second argument is a
+dynamic list containing said metadata.
 
-OmniCRUD subscriptions may be specified with target JSON objects.
+Codified conventions for the content or application of such metadata are referred to as type LISP
+conventions.
 
-##### 2.2.2.2 - Entanglement
+##### 2.1.1.3 - Standard Fusion LISP
 
-OmniCRUD entanglement is when rules for two values in separate JSON mapped databases are enforced
-to keep them aligned, if not identical, when one of them is altered.
+OmniQuery borrows the logic and arithmetic operators of
+[Standard Fusion LISP](https://github.com/Telos-Project/Fusion-LISP?tab=readme-ov-file#222---standard-fusion-lisp).
 
-OmniCRUD entanglements may be specified with target JSON objects, handled by OmniCRUD
+Additionally, it also borrows the return operator, and uses modified versions of certain
+list-related operators.
+
+##### 2.1.1.4 - Usage
+
+###### 2.1.1.4.1 - Selectors
+
+An OmniQuery script which returns data but does not edit data may be treated as a selector for the
+returned data.
+
+###### 2.1.1.4.2 - Subscriptions
+
+OmniQuery subscriptions event handlers tied to specific values within a DMDB which trigger events
+when said values are altered, ideally with the previous and new values being passed to said event.
+
+OmniQuery subscriptions may be specified with OmniQuery selectors.
+
+###### 2.1.1.4.3 - Entanglement
+
+OmniQuery entanglement is when rules for two values in separate DMDBs are enforced to keep them
+aligned, if not identical, when one of them is altered.
+
+OmniQuery entanglements may be specified with OmniQuery selectors, handled by OmniQuery
 subscriptions, and declared and unidirectional or bidirectional.
 
-#### 2.2.3 - Applications
+###### 2.1.1.4.4 - Resolvers
 
-##### 2.2.3.1 - Agnostic Scripts
+An OmniQuery resolver is an API endpoint which transforms an incoming query to the API into a query
+to a database according to its content.
+
+###### 2.1.1.4.5 - Streams
+
+An OmniQuery stream is a sustained connection between data in a DMDB and an external system.
+
+###### 2.1.1.4.6 - Agnostic Scripts
 
 Agnostic scripts are scripts for a system which may be written in any language. As such, rather
 than interacting with said system through environmental variables and functions, the scripts,
-written as function bodies, return an OmniCRUD query as a JSON string, which executes upon the
-state of said system (said state itself represented as JSON), the results of which are then passed
-to the same script as a JSON string upon its next execution.
+written as function bodies, return an OmniQuery script as a LISP string, which executes upon the
+state of said system (said state itself represented as a DMDB), the results of which are then
+passed to the same script as a dynamic list encoded in a JSON string upon its next execution.
+
+#### 2.1.2 - Operators
+
+##### 2.1.2.1 - arguments
+
+The arguments atom, if used in the main scope of the script, resolves to a context passed in by the
+process executing the script, and if used in the scope of an isolated expression, resolves to the
+value passed to said expression when said expression is invoked.
+
+##### 2.1.2.2 - at
+
+###### 2.1.2.2.1 - As Context
+
+The at operator takes a context object as its first argument, with each subsequent argument being a
+number or string.
+
+For each subsequent argument, it shall be treated as an identifier for a value in the dynamic list
+selected corresponding to the previous argument, with strings being keys and numbers being indices.
+
+It shall return a context object corresponding to the dynamic list selected by the last argument.
+
+###### 2.1.2.2.2 - As Field
+
+If used in an expression applied to other values as part of a selection or transformation process,
+the at operator shall operate largely as described above, but with the arguments atom as the first
+argument, representing the value to which the expression is applied, and with the operator
+returning the raw value selected by its last argument rather than a context.
+
+##### 2.1.2.3 - access
+
+The access operator takes a string as its first argument, and may optionally take a dynamic list as
+its second argument.
+
+The string shall specify the address of a database to be accessed, and the dynamic list, if
+present, shall specify credentials for accessing said database if necessary.
+
+It shall return a context object representing the accessed database.
+
+##### 2.1.2.4 - append
+
+The append operator takes a context object as its first argument, with each subsequent argument
+being a dynamic list.
+
+It shall create a value in the database, and at the location therein, corresponding to the context,
+from each dynamic list.
+
+##### 2.1.2.5 - crop
+
+The crop operator takes a context argument as its first argument, and a number as its second.
+
+It shall return the context modified such that its contents are trimmed to no more than the length
+specified by the number.
+
+##### 2.1.2.6 - focus
+
+The focus operator takes a context argument as its first argument, with each subsequent argument
+being a string.
+
+It shall return the context modified such that all values nested within it only contain values
+keyed by the specified strings.
+
+##### 2.1.2.7 - filter
+
+The filter operator takes a context argument as its first argument, with an expression that
+evaluates to a boolean as its second argument.
+
+It shall return the context modified such that any value nested within it is removed if the
+expression, when applied to it, resolves to false.
+
+##### 2.1.2.8 - merge
+
+The merge operator takes two context objects, which should correspond to tables, as its first two
+arguments, the first one being referred to as the left context and the second being referred to as
+the right context, and an expression which resolves to a boolean as its third argument.
+
+It returns a new context generated by performing a full outer join on the two contexts with the
+expression as the join condition.
+
+###### 2.1.2.8.1 - merge-inner
+
+The merge-inner operator behaves similarly to the merge operator, but performs an inner join
+instead of a full outer join.
+
+###### 2.1.2.8.2 - merge-lateral
+
+The merge-lateral operator behaves similarly to the merge operator, but performs a left outer join
+instead of a full outer join.
+
+##### 2.1.2.9 - properties
+
+The properties operator takes a context as its only argument, and returns a context containing the
+system metadata corresponding to the original context.
+
+##### 2.1.2.10 - remove
+
+The remove operator takes a context object as its only argument, and removes all values which
+correspond to the context from the database which contains them.
+
+##### 2.1.2.11 - set
+
+The set operator takes a context object as its first argument, and an arbitrary expression as its
+second argument.
+
+It shall transform all values which correspond to the context to the value generated by passing
+them to the expression.
+
+##### 2.1.2.12 - sort
+
+The sort operator takes a context object as its first argument, and a dynamic list consisting of
+dynamic values where every such value is a boolean as its second argument.
+
+It shall sort contents of the context and return it, where every key in the dynamic list specifies
+the key of a field to sort the contents by, with the order of the values determining sorting
+priority. A value of true means ascending order and a value of false means descending order.
