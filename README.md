@@ -34,7 +34,7 @@ Dynamic list values, be they dynamic or not, may be indexed by index or key.
 
 ###### 2.1.1.1.1 - Cross Dialect Usage
 
-If added to other list dialects, dynamic lists can be injected using the dynamic operator, which
+If added to other LISP dialects, dynamic lists can be injected using the dynamic operator, which
 resolves to everything following itself and all content nested therein in the form of a dynamic
 list.
 
@@ -42,16 +42,63 @@ For example:
 
 	(op arg1 (dynamic value1 (: "key" value2)) arg3)
 
-###### 2.1.1.1.2 - JSON Conversion
+###### 2.1.1.1.2 - Dynamic Paths
+
+A dynamic path is a list of strings and numeric atoms which dictate a path from a root dynamic list
+to a value nested therein.
+
+Each element in the path selects a descendant of the value identified by the previous element, save
+for the first element, which identifies a descendant of the root list. A string element selects by
+key and a numeric element selects by index.
+
+Dynamic paths may either be applied in child mode or descendant mode. In the former, elements may
+only select from the immediate children of the values they are applied to. In the latter, they may
+select the nearest matching descendant as located using a breadth first traversal.
+
+###### 2.1.1.1.3 - Dynamic Metadata
+
+Dynamic metadata is a dynamic list convention regarding meta dynamic lists. A meta dynamic list is
+a dynamic list used for assigning properties to another dynamic list, referred to as the content
+list, without embedding said properties into the content list itself.
+
+A meta dynamic list has two values, one with the key "content", containing the content list, and
+one with the key "metadata", containing a list of property lists. Property lists are dynamic lists
+which have two values, one with the key "selector", containing a dynamic path to a value within the
+aforementioned content, and one with the key "properties", containing a miscellaneous value to
+associate with the selected value.
+
+As with ordinary dynamic lists, if added to other LISP dialects, meta dynamic lists can be injected
+using the meta-dynamic operator, which resolves to everything following itself and all content
+nested therein in the form of a dynamic list.
+
+For example:
+
+	(op
+		arg1
+		(meta-dynamic
+			(: "content" (value1 (: "key" value2)))
+			(: "metadata" (
+				(
+					(: "selector" ("key"))
+					(: "properties" (prop1 prop2))
+				)
+			))
+		)
+		arg3
+	)
+
+###### 2.1.1.1.4 - JSON Conversion
 
 When converting a dynamic list to JSON, a dynamic list with no dynamic values shall become a JSON
 list, and a dynamic list with dynamic values shall become a JSON object, with the order of the
-elements of said list preserver in the resulting object, and with non-dynamic values in said list
+elements of said list preserved in the resulting object, and with non-dynamic values in said list
 receiving the stringified form of their index as their key.
 
 Ordinary lists within dynamic lists shall become JSON lists, non-stringified JSON compatible
 primitive atoms or LISP style equivalents (nil = null, etc), shall become JSON primitives, and all
 other atoms shall become JSON strings.
+
+JSON content may also be converted to dynamic lists.
 
 ##### 2.1.1.2 - Data
 
@@ -136,6 +183,40 @@ than interacting with said system through environmental variables and functions,
 written as function bodies, return an OmniQuery script as a LISP string, which executes upon the
 state of said system (said state itself represented as a DMDB), the results of which are then
 passed to the same script as a dynamic list encoded in a JSON string upon its next execution.
+
+##### 2.1.1.5 - Meta Models
+
+Meta models are models which contextualize a disparate set of records and databases by serializing
+them within, or referencing them from, a hierarchical structure.
+
+###### 2.1.1.5.1 - Dynamic Meta Models
+
+A dynamic list, referred to as a model list, may be used to encode the structure of a meta model,
+and metadata may be assigned to a model list by embedding it in a meta dynamic list referred to as
+a meta model list.
+
+The model list should only serialize the hierarchical structure and data content of the meta model
+to which it maps. A model list is not required to serialize the entirety of the meta model to which
+it, though one which does is referred to as a complete model list, and one which does not is
+referred to as incomplete.
+
+The property lists assigned to values within model lists may have a value with the key "context",
+which contains an OQL query which returns a context that the value corresponding to the property
+list in question acts as an alias to, with any descendant of said corresponding value being nested
+within said context; and may have a value with the key "properties", said value being a dynamic
+list by default, which specifies the system and type properties assigned to the value corresponding
+to the property list in question.
+
+###### 2.1.1.5.2 - Dynamic OQL Queries
+
+A dynamic OQL query is submitted as a meta model list where the property lists thereof may have an
+additional value with the key "query", containing an OQL query to execute upon the resource to
+which the value, corresponding to the property list in question, maps.
+
+When executed, it shall not only execute said OQL queries, but shall also create and update the
+resources to which it maps according to the structure and content declaratively specified in its
+model list and property list properties. It shall then resolve to and return itself with the data
+said OQL queries resolved to embedded in its model list and property list properties.
 
 #### 2.1.2 - Operators
 
@@ -229,12 +310,25 @@ instead of a full outer join.
 The properties operator takes a context as its only argument, and returns a context containing the
 system metadata corresponding to the original context.
 
-##### 2.1.2.10 - remove
+##### 2.1.2.10 - query
+
+The query operator takes a list containing an OQL query as its only argument, executes the query,
+and returns the contents of any context object the query returns as a dynamic list.
+
+It may be used to embed OQL in other LISP dialects.
+
+###### 2.1.2.10.1 - query-meta
+
+The query-meta operator behaves similarly to the query operator, but instead takes a dynamic list
+containing a dynamic OQL query as its only argument, executes the query, and returns the resulting
+meta model the query resolves to as a dynamic list.
+
+##### 2.1.2.11 - remove
 
 The remove operator takes a context object as its only argument, and removes all values which
 correspond to the context from the database which contains them.
 
-##### 2.1.2.11 - set
+##### 2.1.2.12 - set
 
 The set operator takes a context object as its first argument, and an arbitrary expression as its
 second argument.
@@ -242,7 +336,7 @@ second argument.
 It shall transform all values which correspond to the context to the value generated by passing
 them to the expression.
 
-##### 2.1.2.12 - sort
+##### 2.1.2.13 - sort
 
 The sort operator takes a context object as its first argument, and a dynamic list consisting of
 dynamic values where every such value is a boolean as its second argument.
