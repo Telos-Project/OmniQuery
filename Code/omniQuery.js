@@ -279,12 +279,65 @@ var omniQuery = {
 							""
 					};`;
 				}
+
+				if(data.operation.type.toLowerCase().trim() == "create") {
+
+					let columns = { };
+
+					data.operation.data.forEach(item => {
+						columns = Object.assign(columns, item);
+					});
+					
+					return `CREATE TABLE IF NOT EXISTS ${
+						types["at"][0].value
+					} (${
+						Object.keys(columns).map(column =>
+							`${
+								column
+							} ${
+								{
+									"string": "TEXT",
+									"number": "DECIMAL",
+									"boolean": "BOOLEAN"
+								}[typeof columns[column]]
+							}`
+						).join(",")
+					}); INSERT INTO ${
+						types["at"][0].value
+					} (${
+						Object.keys(columns).join(",")
+					}) VALUES ${
+						data.operation.data.map(item => {
+							return `(${Object.keys(columns).map(
+								(column) => {
+									
+									if(typeof item[column] == "string")
+										return `'${item[column]}'`;
+									
+									if(typeof item[column] == "boolean")
+										return `${item[column]}`.toUpperCase();
+									
+									if(typeof item[column] == "number") {
+
+										return `${
+											item[column]
+										}${
+											item[column] % 1 == 0 ? ".0" : ""
+										}`;
+									}
+
+									return `${item[column]}`;
+								}
+							).join(",")})`
+						}).join(",")
+					};`;
+				}
 			},
 			constructSQLFilter: (filter) => {
 				
 				filter = filter.map(
 					item => Array.isArray(item) ?
-						omniQuery.utils.sqlconstructSQLFilter(item) : item
+						omniQuery.utils.sql.constructSQLFilter(item) : item
 				);
 
 				switch(filter[0].toLowerCase().trim()) {
