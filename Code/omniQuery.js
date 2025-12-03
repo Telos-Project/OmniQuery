@@ -64,10 +64,23 @@ var omniQuery = {
 							await client.connect();
 
 							let db = client.db(types["at"][0].value);
-							let collection = db.collection(types["at"][1].value);
 
-							if(operation == "read")
-								contents = await collection.find({ }).toArray();
+							let collection =
+								db.collection(types["at"][1].value);
+
+							if(operation == "read") {
+
+								contents =
+									await collection.find({ }).toArray();
+							}
+
+							if(operation == "create") {
+								
+								contents =
+									await collection.insertMany(
+										data.operation.data
+									);
+							}
 						}
 						
 						catch(error) {

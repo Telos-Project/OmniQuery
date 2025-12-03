@@ -1,14 +1,9 @@
 let utils = {
 	normalizeContext: (context) => {
 
-		if(context.access == null)
-			context.access = {};
-
-		if(context.operation == null)
-			context.operation = {};
-
-		if(context.filters == null)
-			context.filters = [];
+		context.access = context.access != null ? context.access : {};
+		context.operation = context.operation != null ? context.operation : {};
+		context.filters = context.filters != null ? context.filters : [];
 
 		return context;
 	},
@@ -46,6 +41,24 @@ module.exports = [
 			}));
 		},
 		tags: ["oql", "access"]
+	},
+	{
+		process: (context, args) => {
+
+			if(context.local.operator != "append")
+				return null;
+
+			if(!args[0].startsWith("{"))
+				return null; // STUB
+
+			let data = utils.normalizeContext(JSON.parse(args[0]));
+
+			data.operation.type = "create"
+			data.operation.data = args.slice(1).map(item => JSON.parse(item));
+
+			return JSON.stringify(data);
+		},
+		tags: ["oql", "append"]
 	},
 	{
 		process: (context, args) => {
