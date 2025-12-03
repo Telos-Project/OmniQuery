@@ -1,0 +1,87 @@
+let utils = {
+	normalizeContext: (context) => {
+
+		if(context.access == null)
+			context.access = {};
+
+		if(context.operation == null)
+			context.operation = {};
+
+		if(context.filters == null)
+			context.filters = [];
+
+		return context;
+	},
+	normalizeValue: (value) => {
+
+		value = JSON.parse("" + value);
+
+		if(typeof value == "string") {
+
+			if(value.startsWith("\"") && value.endsWith("\""))
+				value = value.substring(1, value.length - 1);
+		}
+
+		return value;
+	}
+};
+
+module.exports = [
+	{
+		process: (context, args) => {
+
+			if(context.local.operator != "access")
+				return null;
+
+			return JSON.stringify(utils.normalizeContext({
+				access: {
+					url: utils.normalizeValue(args[0]),
+					options: args[1] != null ?
+						JSON.parse("" + args[1]) :
+						null
+				},
+				operation: {
+					type: "read"
+				}
+			}));
+		},
+		tags: ["oql", "access"]
+	},
+	{
+		process: (context, args) => {
+
+			if(context.local.operator != "at")
+				return null;
+
+			if(!args[0].startsWith("{"))
+				return `${args[0]}[${args[1]}]`;
+
+			let data = utils.normalizeContext(JSON.parse(args[0]));
+
+			args.slice(1).forEach(item => {
+
+				data.filters.push({
+					type: "at",
+					options: {
+						value: utils.normalizeValue(item)
+					}
+				});
+			});
+
+			return JSON.stringify(data);
+		},
+		tags: ["oql", "at"]
+	},
+	{
+		process: (context, args) => {
+
+			if(context.local.operator != "query")
+				return null;
+
+			return `(require("${
+				process.cwd().split("\\").join("/")
+			}/omniQuery.js").query(${args[0]}))\n`;
+		},
+		tags: ["oql", "query"]
+	}
+];

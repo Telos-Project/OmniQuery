@@ -13,92 +13,14 @@ querying.
 
 #### 2.1.1 - Conventions
 
-##### 2.1.1.1 - Dynamic LISP
+##### 2.1.1.1 - Standard Fusion LISP
 
-Dynamic LISP is a LISP convention which allows values in lists to have keys.
+OmniQuery borrows the logic and arithmetic operators of
+[Standard Fusion LISP](https://github.com/Telos-Project/Fusion-LISP?tab=readme-ov-file#222---standard-fusion-lisp).
 
-A value with a key in a dynamic LISP list shall itself be nested as the third value in a sublist
-added in its place to the list to which it belongs, where the first value or operator of said
-sublist is a colon and the second value is the key.
-
-By default, value keys should be strings.
-
-For example:
-
-    (value1 (: "key" value2))
-
-In the context of dynamic LISP, keyed values can be called dynamic values, and lists featuring
-dynamic values can be called dynamic lists. These concepts may be applied beyond dynamic LISP.
-
-Dynamic list values, be they dynamic or not, may be indexed by index or key.
-
-###### 2.1.1.1.1 - Cross Dialect Usage
-
-If added to other LISP dialects, dynamic lists can be injected using the dynamic operator, which
-resolves to everything following itself and all content nested therein in the form of a dynamic
-list.
-
-For example:
-
-	(op arg1 (dynamic value1 (: "key" value2)) arg3)
-
-###### 2.1.1.1.2 - Dynamic Paths
-
-A dynamic path is a list of strings and numeric atoms which dictate a path from a root dynamic list
-to a value nested therein.
-
-Each element in the path selects a descendant of the value identified by the previous element, save
-for the first element, which identifies a descendant of the root list. A string element selects by
-key and a numeric element selects by index.
-
-Dynamic paths may either be applied in child mode or descendant mode. In the former, elements may
-only select from the immediate children of the values they are applied to. In the latter, they may
-select the nearest matching descendant as located using a breadth first traversal.
-
-###### 2.1.1.1.3 - Dynamic Metadata
-
-Dynamic metadata is a dynamic list convention regarding meta dynamic lists. A meta dynamic list is
-a dynamic list used for assigning properties to another dynamic list, referred to as the content
-list, without embedding said properties into the content list itself.
-
-A meta dynamic list has two values, one with the key "content", containing the content list, and
-one with the key "metadata", containing a list of property lists. Property lists are dynamic lists
-which have two values, one with the key "selector", containing a dynamic path to a value within the
-aforementioned content, and one with the key "properties", containing a miscellaneous value to
-associate with the selected value.
-
-As with ordinary dynamic lists, if added to other LISP dialects, meta dynamic lists can be injected
-using the meta-dynamic operator, which resolves to everything following itself and all content
-nested therein in the form of a dynamic list.
-
-For example:
-
-	(op
-		arg1
-		(meta-dynamic
-			(: "content" (value1 (: "key" value2)))
-			(: "metadata" (
-				(
-					(: "selector" ("key"))
-					(: "properties" (prop1 prop2))
-				)
-			))
-		)
-		arg3
-	)
-
-###### 2.1.1.1.4 - JSON Conversion
-
-When converting a dynamic list to JSON, a dynamic list with no dynamic values shall become a JSON
-list, and a dynamic list with dynamic values shall become a JSON object, with the order of the
-elements of said list preserved in the resulting object, and with non-dynamic values in said list
-receiving the stringified form of their index as their key.
-
-Ordinary lists within dynamic lists shall become JSON lists, non-stringified JSON compatible
-primitive atoms or LISP style equivalents (nil = null, etc), shall become JSON primitives, and all
-other atoms shall become JSON strings.
-
-JSON content may also be converted to dynamic lists.
+Additionally, it also borrows the return operator, uses modified versions of certain list-related
+operators, and uses the [dynamic LISP](https://github.com/Telos-Project/Fusion-LISP?tab=readme-ov-file#2222---dynamic-lisp)
+conventions.
 
 ##### 2.1.1.2 - Data
 
@@ -137,29 +59,21 @@ dynamic list containing said metadata.
 Codified conventions for the content or application of such metadata are referred to as type LISP
 conventions.
 
-##### 2.1.1.3 - Standard Fusion LISP
+##### 2.1.1.3 - Usage
 
-OmniQuery borrows the logic and arithmetic operators of
-[Standard Fusion LISP](https://github.com/Telos-Project/Fusion-LISP?tab=readme-ov-file#222---standard-fusion-lisp).
-
-Additionally, it also borrows the return operator, and uses modified versions of certain
-list-related operators.
-
-##### 2.1.1.4 - Usage
-
-###### 2.1.1.4.1 - Selectors
+###### 2.1.1.3.1 - Selectors
 
 An OmniQuery script which returns data but does not edit data may be treated as a selector for the
 returned data.
 
-###### 2.1.1.4.2 - Subscriptions
+###### 2.1.1.3.2 - Subscriptions
 
 OmniQuery subscriptions event handlers tied to specific values within a DMDB which trigger events
 when said values are altered, ideally with the previous and new values being passed to said event.
 
 OmniQuery subscriptions may be specified with OmniQuery selectors.
 
-###### 2.1.1.4.3 - Entanglement
+###### 2.1.1.3.3 - Entanglement
 
 OmniQuery entanglement is when rules for two values in separate DMDBs are enforced to keep them
 aligned, if not identical, when one of them is altered.
@@ -167,16 +81,16 @@ aligned, if not identical, when one of them is altered.
 OmniQuery entanglements may be specified with OmniQuery selectors, handled by OmniQuery
 subscriptions, and declared and unidirectional or bidirectional.
 
-###### 2.1.1.4.4 - Resolvers
+###### 2.1.1.3.4 - Resolvers
 
 An OmniQuery resolver is an API endpoint which transforms an incoming query to the API into a query
 to a database according to its content.
 
-###### 2.1.1.4.5 - Streams
+###### 2.1.1.3.5 - Streams
 
 An OmniQuery stream is a sustained connection between data in a DMDB and an external system.
 
-###### 2.1.1.4.6 - Agnostic Scripts
+###### 2.1.1.3.6 - Agnostic Scripts
 
 Agnostic scripts are scripts for a system which may be written in any language. As such, rather
 than interacting with said system through environmental variables and functions, the scripts,
@@ -184,12 +98,12 @@ written as function bodies, return an OmniQuery script as a LISP string, which e
 state of said system (said state itself represented as a DMDB), the results of which are then
 passed to the same script as a dynamic list encoded in a JSON string upon its next execution.
 
-##### 2.1.1.5 - Meta Models
+##### 2.1.1.4 - Meta Models
 
 Meta models are models which contextualize a disparate set of records and databases by serializing
 them within, or referencing them from, a hierarchical structure.
 
-###### 2.1.1.5.1 - Dynamic Meta Models
+###### 2.1.1.4.1 - Dynamic Meta Models
 
 A dynamic list, referred to as a model list, may be used to encode the structure of a meta model,
 and metadata may be assigned to a model list by embedding it in a meta dynamic list referred to as
