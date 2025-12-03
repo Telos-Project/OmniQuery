@@ -3,7 +3,6 @@ var Database = require('better-sqlite3');
 var { MongoClient } = require("mongodb");
 var sqlite3 = require('sqlite3').verbose();
 
-
 // STUB: Selector Format Conversions?
 
 /*
