@@ -1,6 +1,7 @@
 var autoCORS = require("telos-autocors");
 var Database = require('better-sqlite3');
 var { MongoClient } = require("mongodb");
+var pg = require("pg");
 var sqlite3 = require('sqlite3').verbose();
 
 // STUB: Selector Format Conversions?
@@ -95,23 +96,41 @@ var omniQuery = {
 		},
 		{ // POSTGRES
 			match: (data) => {
-				return data.access.url.startsWith("postgres://");
+				return data.access.url.startsWith("postgres://") ||
+					data.access.url.startsWith("postgresql://");
 			},
 			query: (data, options) => {
-				
-				let tokens = data.access.url.split(/\:\/\/|\:|\@|\//);
 
-				let access = {
-					username: tokens[1],
-					password: tokens[2],
-					host: tokens[3],
-					port: tokens[4],
-					database: tokens[5]
-				};
+				return new Promise((resolve, reject) => {
 
-				let query = omniQuery.utils.sql.constructSQL(data);
+					(async () => {
+							
+						let client = new pg.Client({
+							connectionString: data.access.url
+						});
 
-				// STUB
+						try {
+
+							await client.connect();
+
+							let result = await client.query(
+								omniQuery.utils.sql.constructSQL(data)
+							);
+
+							await client.end();
+
+							resolve(result.rows);
+						}
+
+						catch(error) {
+
+							console.error(error);
+							client.end();
+
+							resolve(null);
+						}
+					})();
+				});
 			}
 		},
 		{ // SQLITE
