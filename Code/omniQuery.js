@@ -114,7 +114,9 @@ var omniQuery = {
 							await client.connect();
 
 							let result = await client.query(
-								omniQuery.utils.sql.constructSQL(data)
+								omniQuery.utils.sql.constructSQL(
+									data, { addColumns: true }
+								)
 							);
 
 							await client.end();
@@ -269,7 +271,7 @@ var omniQuery = {
 			}
 		},
 		sql: {
-			constructSQL: (data) => { // STUB: PREVENT INJECTION
+			constructSQL: (data, options) => { // STUB: PREVENT INJECTION
 
 				let types = omniQuery.utils.general.getFilterTypes(
 					data.filters
@@ -320,7 +322,22 @@ var omniQuery = {
 								}[typeof columns[column]]
 							}`
 						).join(",")
-					}); INSERT INTO ${
+					}); ${options.addColumns ?
+						Object.keys(columns).map(column =>
+							`ALTER TABLE ${
+								types["at"][0].value
+							} ADD COLUMN IF NOT EXISTS ${
+								column
+							} ${
+								{
+									"string": "TEXT",
+									"number": "DECIMAL",
+									"boolean": "BOOLEAN"
+								}[typeof columns[column]]
+							};`
+						).join(" ") :
+						""
+					} INSERT INTO ${
 						types["at"][0].value
 					} (${
 						Object.keys(columns).join(",")
