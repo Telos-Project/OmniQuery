@@ -179,10 +179,13 @@ from each dynamic list.
 
 ##### 2.1.2.5 - crop
 
-The crop operator takes a context argument as its first argument, and a number as its second.
+The crop operator takes a context argument as its first argument, and a number as its second. It
+may also optionally have a third numerical argument.
 
 It shall return the context modified such that its contents are trimmed to no more than the length
-specified by the number.
+specified by the first numerical argument. However, if it has a third argument, said contents shall
+be cropped to a subsection starting at the index specified by the second numerical argument, before
+the operation is otherwise applied as specified.
 
 ##### 2.1.2.6 - focus
 
@@ -222,7 +225,8 @@ instead of a full outer join.
 ##### 2.1.2.9 - properties
 
 The properties operator takes a context as its only argument, and returns a context containing the
-system metadata corresponding to the original context.
+system metadata corresponding to the original context. Such metadata shall, if applicable, include
+data regarding the size of the latter context's content.
 
 ##### 2.1.2.10 - query
 
