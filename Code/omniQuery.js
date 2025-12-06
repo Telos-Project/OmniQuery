@@ -300,15 +300,28 @@ var omniQuery = {
 					};`;
 				}
 
-				if(data.operation.type.toLowerCase().trim() == "create") {
+				if(data.operation.type.toLowerCase().trim() == "create" ||
+					(
+						data.operation.type.toLowerCase().trim() == "update" &&
+						types["filter"] == null
+					)
+				) {
 
 					let columns = { };
+
+					data.operation.data =
+						Array.isArray(data.operation.data[0]) ?
+							data.operation.data[0] : data.operation.data;
 
 					data.operation.data.forEach(item => {
 						columns = Object.assign(columns, item);
 					});
 					
-					return `CREATE TABLE IF NOT EXISTS ${
+					return `${
+						data.operation.type.toLowerCase().trim() == "update" ?
+							`DROP TABLE IF EXISTS ${types["at"][0].value}; ` :
+							""
+					}CREATE TABLE IF NOT EXISTS ${
 						types["at"][0].value
 					} (${
 						Object.keys(columns).map(column =>
@@ -366,6 +379,82 @@ var omniQuery = {
 							).join(",")})`
 						}).join(",")
 					};`;
+				}
+				
+				if(
+					data.operation.type.toLowerCase().trim() == "update" &&
+						types["filter"] != null
+				) {
+
+					let columns = data.operation.data[0];
+					
+					return `${options.addColumns ?
+						Object.keys(columns).map(column =>
+							`ALTER TABLE ${
+								types["at"][0].value
+							} ADD COLUMN IF NOT EXISTS ${
+								column
+							} ${
+								{
+									"string": "TEXT",
+									"number": "DECIMAL",
+									"boolean": "BOOLEAN"
+								}[typeof columns[column]]
+							};`
+						).join(" ") :
+						""
+					} UPDATE ${
+						types["at"][0].value
+					} SET ${
+						Object.keys(columns).map(
+							(column) => {
+								
+								if(typeof columns[column] == "string")
+									return `${column} = '${columns[column]}'`;
+								
+								if(typeof columns[column] == "boolean") {
+
+									return `${
+										column
+									} = ${
+										("" + columns[column]).toUpperCase()
+									}`;
+								}
+								
+								if(typeof columns[column] == "number") {
+
+									return `${column} = ${
+										columns[column]
+									}${
+										columns[column] % 1 == 0 ? ".0" : ""
+									}`;
+								}
+
+								return `${column} = ${columns[column]}`;
+							}
+						).join(",")
+					} WHERE ${
+						types["filter"].map(
+							item =>
+								omniQuery.utils.sql.constructSQLFilter(
+									item.value
+								)
+						).join(" AND ")
+					};`;
+				}
+
+				if(data.operation.type.toLowerCase().trim() == "delete") {
+					
+					return types["filter"] != null ?
+						`DELETE FROM ${types["at"][0].value} WHERE ${
+							types["filter"].map(
+								item =>
+									omniQuery.utils.sql.constructSQLFilter(
+										item.value
+									)
+							).join(" AND ")
+						}` :
+						`DROP TABLE ${types["at"][0].value};`;
 				}
 			},
 			constructSQLFilter: (filter) => {
