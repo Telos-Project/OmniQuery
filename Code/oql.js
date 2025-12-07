@@ -175,9 +175,7 @@ module.exports = [
 			if(context.local.operator != "query")
 				return null;
 
-			return `(require("${
-				process.cwd().split("\\").join("/")
-			}/omniQuery.js").query(${args[0]}))\n`;
+			return `(use("telos-oql/omniQuery.js").query(${args[0]}))\n`;
 		},
 		tags: ["oql", "query"]
 	}
