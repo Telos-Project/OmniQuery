@@ -1,5 +1,4 @@
 let utils = {
-	left: /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[(?:".*?"|'.*?'|\d+|[A-Za-z_$][\w$]*)\])*$/,
 	normalizeContext: (context) => {
 
 		context.access = context.access != null ? context.access : {};
