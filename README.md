@@ -30,8 +30,11 @@ OmniQuery is, in and of itself, stateless.
 
 ###### 2.1.1.2.2 - Contexts
 
-OmniQuery contexts are objects which act as cursors which point to specific databases and sets of
+OmniQuery contexts are objects which act as cursors that point to specific databases and sets of
 data therein.
+
+Contexts may be serialized or expressed as literals by rendering OQL expressions which resolve to
+said contexts as nested string lists.
 
 ###### 2.1.1.2.3 - Dynamic Mapping
 
