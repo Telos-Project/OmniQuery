@@ -54,7 +54,7 @@ module.exports = [
 					args.slice(1).map(item => `(${item})`).join(",")
 				}].forEach(item=>{(${
 					args[0]
-				}).push(item);}):((context)=>{
+				}).push(item);})):((context)=>{
 					context.operation.type="create";
 				${
 					args.slice(1).map(
