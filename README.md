@@ -108,7 +108,7 @@ attached within said state, usually as a JSON list of strings.
 
 An alternate form of output for agnostic scripts, called blunt output, has the function return a
 partial or complete string serialization, usually in JSON, of an updated state to apply to the
-system in which it operates,
+system in which it operates.
 
 ##### 2.1.1.4 - Meta Models
 
