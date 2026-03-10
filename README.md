@@ -101,6 +101,15 @@ written as function bodies, return an OmniQuery script as a LISP string, which e
 state of said system (said state itself represented as a DMDB), the results of which are then
 passed to the same script as a dynamic list encoded in a JSON string upon its next execution.
 
+An alternate form of input for agnostic scripts, called blunt input, has the function take two
+string arguments, the first being a serialization of the state of the system it is running in,
+usually in JSON, and the second, if applicable, being a path to the entity to which the script is
+attached within said state, usually as a JSON list of strings.
+
+An alternate form of output for agnostic scripts, called blunt output, has the function return a
+partial or complete string serialization, usually in JSON, of an updated state to apply to the
+system in which it operates,
+
 ##### 2.1.1.4 - Meta Models
 
 Meta models are models which contextualize a disparate set of records and databases by serializing
