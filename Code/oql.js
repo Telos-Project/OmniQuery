@@ -31,7 +31,7 @@ module.exports = [
 	{
 		process: (context, args) => {
 
-			return context.local.operator == "access" ?
+			return context.local.operator.toLowerCase() == "access" ?
 				JSON.stringify(utils.normalizeContext({
 					access: {
 						url: utils.normalizeValue(args[0]),
@@ -47,7 +47,7 @@ module.exports = [
 	{
 		process: (context, args) => {
 
-			return context.local.operator == "append" ?
+			return context.local.operator.toLowerCase() == "append" ?
 				`(Array.isArray(${
 					args[0]
 				})?([${
@@ -70,7 +70,7 @@ module.exports = [
 	{
 		process: (context, args) => {
 
-			return context.local.operator == "at" ?
+			return context.local.operator.toLowerCase() == "at" ?
 				`(Array.isArray(${
 					args[0]
 				})?((${
@@ -93,7 +93,20 @@ module.exports = [
 	{
 		process: (context, args) => {
 
-			return context.local.operator == "filter" ?
+			return context.local.operator.toLowerCase() == "crop" ?
+				`(((context)=>{context.filters.push(
+					{type:"crop",options:{value:[
+				${
+					args.slice[1].map(item => `(${item})`).join(",")
+				}]}});return context;})(${args[0]}))` :
+				null;
+		},
+		tags: ["oql", "crop"]
+	},
+	{
+		process: (context, args) => {
+
+			return context.local.operator.toLowerCase() == "filter" ?
 				`(((context)=>{context.filters.push(
 					{type:"filter",options:{value:(
 				${
@@ -106,7 +119,52 @@ module.exports = [
 	{
 		process: (context, args) => {
 
-			return context.local.operator == "remove" ?
+			return context.local.operator.toLowerCase() == "focus" ?
+				`(((context)=>{context.filters.push(
+					{type:"focus",options:{value:[
+				${
+					args.slice[1].map(item => `(${item})`).join(",")
+				}]}});return context;})(${args[0]}))` :
+				null;
+		},
+		tags: ["oql", "focus"]
+	},
+	{
+		process: (context, args) => {
+
+			return [
+				"merge", "merge-inner", "merge-lateral"
+			].includes(context.local.operator.toLowerCase()) ?
+				`(((context)=>{context.filters.push(
+					{type:"${
+						context.local.operator.toLowerCase()
+					}",options:{value:[(
+				${
+					args[1]
+				}),${
+					JSON.stringify(context.local.list[3])
+				}]}});return context;})(${args[0]}))` :
+				null;
+		},
+		tags: ["oql", "merge", "merge-inner", "merge-lateral"]
+	},
+	{
+		process: (context, args) => {
+
+			return context.local.operator.toLowerCase() == "properties" ?
+				`(((context)=>{
+					context.operation.type="properties";return context;
+				})(${
+					args[0]
+				}))` :
+				null;
+		},
+		tags: ["oql", "properties"]
+	},
+	{
+		process: (context, args) => {
+
+			return context.local.operator.toLowerCase() == "remove" ?
 				`(Array.isArray(${
 					args[0]
 				})?((${args[0]}).splice(${args[1], 1}))${
@@ -123,7 +181,7 @@ module.exports = [
 	{
 		process: (context, args) => {
 
-			return context.local.operator == "set" ?
+			return context.local.operator.toLowerCase() == "set" ?
 				`((((item)=>{
 					if(item==null)return true;
 					return !(typeof item =="object"&&!Array.isArray(item));
@@ -169,7 +227,7 @@ module.exports = [
 	{
 		process: (context, args) => {
 
-			return context.local.operator == "sort" ?
+			return context.local.operator.toLowerCase() == "sort" ?
 				`(Array.isArray(${
 					args[0]
 				})?((${args[0]}).sort()):(((context)=>{
@@ -186,11 +244,21 @@ module.exports = [
 	{
 		process: (context, args) => {
 
-			if(context.local.operator != "query")
+			if(context.local.operator.toLowerCase() != "query")
 				return null;
 
 			return `(use("telos-oql/omniQuery.js").query(${args[0]}))\n`;
 		},
 		tags: ["oql", "query"]
+	},
+	{
+		process: (context, args) => {
+
+			if(context.local.operator.toLowerCase() != "query-meta")
+				return null;
+
+			return `(use("telos-oql/omniQuery.js").queryMeta(${args[0]}))\n`;
+		},
+		tags: ["oql", "query-meta"]
 	}
 ];

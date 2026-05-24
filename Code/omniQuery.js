@@ -40,6 +40,7 @@ var omniQuery = {
 		// STUB: Postgres, Mongo, JSON | File / Storage / Memory / Server
 		{ // MONGO
 			match: (data) => {
+
 				return data.access.url.startsWith("mongodb://") ||
 					data.access.url.startsWith("mongodb+srv://");
 			},
@@ -96,6 +97,7 @@ var omniQuery = {
 		},
 		{ // POSTGRES
 			match: (data) => {
+				
 				return data.access.url.startsWith("postgres://") ||
 					data.access.url.startsWith("postgresql://");
 			},
@@ -250,6 +252,9 @@ var omniQuery = {
 			return null;
 		}
 	},
+	queryMeta: (query) => {
+		// STUB
+	},
 	subscribe: (target, selector) => {
 		// STUB
 	},
@@ -267,7 +272,7 @@ var omniQuery = {
 					types[type].push(item.options);
 				});
 
-				return types
+				return types;
 			}
 		},
 		sql: {

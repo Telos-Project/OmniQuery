@@ -82,7 +82,7 @@ OmniQuery entanglement is when rules for two values in separate DMDBs are enforc
 aligned, if not identical, when one of them is altered.
 
 OmniQuery entanglements may be specified with OmniQuery selectors, handled by OmniQuery
-subscriptions, and declared and unidirectional or bidirectional.
+subscriptions, and declared unidirectional or bidirectional.
 
 ###### 2.1.1.3.4 - Resolvers
 
@@ -199,21 +199,21 @@ specified by the first numerical argument. However, if it has a third argument, 
 be cropped to a subsection starting at the index specified by the second numerical argument, before
 the operation is otherwise applied as specified.
 
-##### 2.1.2.6 - focus
-
-The focus operator takes a context argument as its first argument, with each subsequent argument
-being a string.
-
-It shall return the context modified such that all values nested within it only contain values
-keyed by the specified strings.
-
-##### 2.1.2.7 - filter
+##### 2.1.2.6 - filter
 
 The filter operator takes a context argument as its first argument, with an expression that
 evaluates to a boolean as its second argument.
 
 It shall return the context modified such that any value nested within it is removed if the
 expression, when applied to it, resolves to false.
+
+##### 2.1.2.7 - focus
+
+The focus operator takes a context argument as its first argument, with each subsequent argument
+being a string.
+
+It shall return the context modified such that all values nested within it only contain values
+keyed by the specified strings.
 
 ##### 2.1.2.8 - merge
 
