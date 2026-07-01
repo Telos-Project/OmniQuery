@@ -15,7 +15,13 @@ let utils = {
 	},
 	normalizeValue: (value) => {
 
-		value = JSON.parse("" + value);
+		try {
+			value = JSON.parse("" + value);
+		}
+
+		catch(error) {
+			return null;
+		}
 
 		if(typeof value == "string") {
 
@@ -32,14 +38,20 @@ module.exports = [
 		process: (context, args) => {
 
 			return context.local.operator.toLowerCase() == "access" ?
-				JSON.stringify(utils.normalizeContext({
-					access: {
-						url: utils.normalizeValue(args[0]),
-						options: args[1] != null ?
-							JSON.parse("" + args[1]) :
-							null
-					}
-				})) :
+				`(((item)=>{if(typeof (${
+					args[0]
+				})=="object")item.access.url=(${
+					args[0]
+				});return item;})(${
+					JSON.stringify(utils.normalizeContext({
+						access: {
+							url: utils.normalizeValue(args[0]),
+							options: args[1] != null ?
+								JSON.parse("" + args[1]) :
+								null
+						}
+					}))
+				}))` :
 				null;
 		},
 		tags: ["oql", "access"]

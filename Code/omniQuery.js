@@ -957,11 +957,22 @@ var omniQuery = {
 			}
 		},
 
-		{ // STUB: JSON - READ / WRITE -- HTTP
-			match: (data) => false,
-			query: (data, options) => {
-				// STUB
-			}
+		{ // JSON documents — Mongo-like operations over an in-memory object,
+		  // a local .json file (written back on modification), or an http(s)
+		  // URL (read-only, loaded via GET).
+			match: (data) => {
+
+				let url = data.access.url;
+
+				if(url != null && typeof url === "object")
+					return true;
+
+				if(typeof url === "string")
+					return /^https?:\/\//i.test(url) || /\.json$/i.test(url);
+
+				return false;
+			},
+			query: (data, options) => jsonQuery(data, options)
 		},
 
 		{ // SQLITE (catch-all: bare file paths and sqlite: URLs)
@@ -1134,6 +1145,11 @@ var omniQuery = {
 			buildFilter: buildMongoFilter,
 			buildSort: buildMongoSort,
 			buildCondition: buildMongoCondition
+		},
+		json: {
+			buildPredicate: buildJsonPredicate,
+			evalCondition: evalJsonCondition,
+			get: jsonGet
 		}
 	}
 };
@@ -1176,6 +1192,322 @@ async function mongoJoin(collection, types, merges) {
 		pipeline.push({ $match: { _merged: { $ne: [] } } });
 
 	return await collection.aggregate(pipeline).toArray();
+}
+
+// ---------------------------------------------------------------------------
+// JSON backend (Mongo-like operations over plain JSON: object / file / HTTP)
+// ---------------------------------------------------------------------------
+
+// Read a (dotted) field path out of a document.
+function jsonGet(doc, path) {
+
+	if(doc == null)
+		return undefined;
+
+	return String(path).split(".").reduce(
+		(o, k) => (o == null ? undefined : o[k]), doc);
+}
+
+var JSON_COMPARATORS = {
+	equals:  (a, b) => a === b,
+	less:    (a, b) => a < b,
+	greater: (a, b) => a > b,
+	gte:     (a, b) => a >= b,
+	lte:     (a, b) => a <= b
+};
+
+// Evaluate a raw OQL filter list against a single document.
+function evalJsonCondition(expr, doc) {
+
+	if(!Array.isArray(expr))
+		throw new Error("OmniQuery: filter expression must be a list.");
+
+	let op = String(expr[0]).toLowerCase().trim();
+
+	if(op === "and") return expr.slice(1).every(e => evalJsonCondition(e, doc));
+	if(op === "or")  return expr.slice(1).some(e => evalJsonCondition(e, doc));
+	if(op === "not") return expr.slice(1).every(e => !evalJsonCondition(e, doc));
+
+	let cmp = JSON_COMPARATORS[op];
+
+	if(cmp == null)
+		throw new Error(`OmniQuery: unsupported filter operator '${op}'.`);
+
+	let operand = (x) => {
+		let c = classifyOperand(x);
+		return c.literal ? c.value : jsonGet(doc, c.name);
+	};
+
+	for(let i = 1; i < expr.length - 1; i++)
+		if(!cmp(operand(expr[i]), operand(expr[i + 1])))
+			return false;
+
+	return true;
+}
+
+function buildJsonPredicate(types) {
+
+	if(types["filter"] == null)
+		return () => true;
+
+	let exprs = types["filter"].map(f => f.value);
+
+	return (doc) => exprs.every(e => evalJsonCondition(e, doc));
+}
+
+function jsonSortPairs(spec) {
+
+	let pairs = [];
+	let put = (k, asc) => pairs.push([k, !(asc === false || asc === "false")]);
+
+	if(Array.isArray(spec))
+		spec.forEach(item => {
+			if(Array.isArray(item)) put(item[0], item[1]);
+			else if(item != null && typeof item === "object")
+				Object.entries(item).forEach(([k, v]) => put(k, v));
+		});
+
+	else if(spec != null && typeof spec === "object")
+		Object.entries(spec).forEach(([k, v]) => put(k, v));
+
+	return pairs;
+}
+
+function projectJson(doc, columns) {
+
+	let out = {};
+
+	columns.forEach(c => { out[String(c).split(".").pop()] = jsonGet(doc, c); });
+
+	return out;
+}
+
+// Navigate an 'at' path to the array (collection) it addresses. With
+// createMissing, intermediate objects and the final array are created.
+function resolveJsonCollection(root, atPath, createMissing) {
+
+	if(atPath.length === 0) {
+
+		if(Array.isArray(root))
+			return { arr: root, parent: null, key: null };
+
+		throw new Error(
+			"OmniQuery: JSON root is not a collection; address one with 'at'.");
+	}
+
+	let parent = root;
+
+	for(let i = 0; i < atPath.length - 1; i++) {
+
+		if(parent[atPath[i]] == null) {
+
+			if(!createMissing)
+				return { arr: undefined, parent: undefined, key: null };
+
+			parent[atPath[i]] = {};
+		}
+
+		parent = parent[atPath[i]];
+	}
+
+	let key = atPath[atPath.length - 1];
+
+	if(parent[key] == null && createMissing)
+		parent[key] = [];
+
+	return { arr: parent[key], parent, key };
+}
+
+// In-memory lookup join, mirroring the Mongo $lookup semantics.
+function jsonMerge(leftDocs, root, merge) {
+
+	let type = String(merge.type).toLowerCase().trim();
+
+	if(type === "merge")
+		throw new Error(
+			"OmniQuery: full outer join (merge) is not supported for JSON; " +
+			"use merge-inner or merge-lateral.");
+
+	let rightCtx = merge.options.value[0] || {};
+	let condition = merge.options.value[1];
+
+	let rightAt = (getFilterTypes(rightCtx.filters || [])["at"] || [])
+		.map(a => a.value);
+
+	let right = resolveJsonCollection(root, rightAt, false).arr || [];
+
+	let field = (x) => {
+		let c = classifyOperand(x);
+		return String(c.literal ? c.value : c.name).split(".").pop();
+	};
+
+	let localField = field(condition[1]);
+	let foreignField = field(condition[2]);
+
+	let out = [];
+
+	leftDocs.forEach(l => {
+
+		let matches = right.filter(
+			r => jsonGet(r, foreignField) === jsonGet(l, localField));
+
+		if(type === "merge-inner" && matches.length === 0)
+			return;
+
+		out.push(Object.assign({}, l, { _merged: matches }));
+	});
+
+	return out;
+}
+
+async function jsonQuery(data, options) {
+
+	let url = data.access.url;
+	let mode, root;
+
+	if(url != null && typeof url === "object") {
+		mode = "object";
+		root = url; // mutated in place; the caller observes changes
+	}
+
+	else if(typeof url === "string" && /^https?:\/\//i.test(url)) {
+
+		mode = "http";
+
+		let response = await fetch(url, data.access.options || {});
+
+		if(!response.ok)
+			throw new Error(
+				`OmniQuery: JSON GET '${url}' failed (${response.status}).`);
+
+		root = await response.json();
+	}
+
+	else if(typeof url === "string" && /\.json$/i.test(url)) {
+
+		mode = "file";
+
+		let fs = require("fs").promises;
+
+		try {
+			let text = await fs.readFile(url, "utf8");
+			root = text.trim() === "" ? {} : JSON.parse(text);
+		}
+
+		catch(error) {
+			if(error.code !== "ENOENT") throw error;
+			root = {}; // new file; materialized on first write
+		}
+	}
+
+	else
+		throw new Error(
+			"OmniQuery: JSON backend requires an object, an http(s) URL, " +
+			"or a '.json' file path.");
+
+	let op = String(data.operation.type).toLowerCase().trim();
+
+	if(mode === "http" && (op === "create" || op === "update" || op === "delete"))
+		throw new Error("OmniQuery: JSON HTTP access is read-only.");
+
+	let types = getFilterTypes(data.filters);
+	let atPath = (types["at"] || []).map(a => a.value);
+	let predicate = buildJsonPredicate(types);
+	let result = null, modified = false;
+
+	if(op === "read") {
+
+		let docs = (resolveJsonCollection(root, atPath, false).arr || [])
+			.filter(predicate);
+
+		(data.filters || [])
+			.filter(f => ["merge", "merge-inner", "merge-lateral"]
+				.includes(String(f.type).toLowerCase().trim()))
+			.forEach(m => { docs = jsonMerge(docs, root, m); });
+
+		if(types["focus"] != null)
+			docs = docs.map(d => projectJson(d, types["focus"][0].value));
+
+		if(types["sort"] != null) {
+
+			let pairs = jsonSortPairs(types["sort"][0].value);
+
+			docs.sort((a, b) => {
+				for(let [k, asc] of pairs) {
+					let av = jsonGet(a, k), bv = jsonGet(b, k);
+					if(av < bv) return asc ? -1 : 1;
+					if(av > bv) return asc ? 1 : -1;
+				}
+				return 0;
+			});
+		}
+
+		if(types["crop"] != null) {
+			let arr = types["crop"][0].value;
+			arr = Array.isArray(arr) ? arr : [arr];
+			let offset = arr.length > 1 ? Number(arr[1]) : 0;
+			docs = docs.slice(offset, offset + Number(arr[0]));
+		}
+
+		result = docs;
+	}
+
+	else if(op === "create") {
+
+		let target = resolveJsonCollection(root, atPath, true);
+		let rows = data.operation.data;
+
+		if(Array.isArray(rows[0]) && rows.length === 1)
+			rows = rows[0];
+
+		target.arr.push(...rows);
+		result = { insertedCount: rows.length };
+		modified = rows.length > 0;
+	}
+
+	else if(op === "update") {
+
+		let arr = resolveJsonCollection(root, atPath, false).arr || [];
+		let values = Array.isArray(data.operation.data) ?
+			data.operation.data[0] : data.operation.data;
+		let matched = 0;
+
+		arr.forEach(d => {
+			if(predicate(d)) { Object.assign(d, values); matched++; }
+		});
+
+		result = { matchedCount: matched, modifiedCount: matched };
+		modified = matched > 0;
+	}
+
+	else if(op === "delete") {
+
+		let arr = resolveJsonCollection(root, atPath, false).arr || [];
+		let kept = arr.filter(d => !predicate(d));
+		let removed = arr.length - kept.length;
+
+		if(removed > 0)
+			arr.splice(0, arr.length, ...kept); // in place: preserves references
+
+		result = { deletedCount: removed };
+		modified = removed > 0;
+	}
+
+	else if(op === "properties")
+		result = [{
+			count: (resolveJsonCollection(root, atPath, false).arr || [])
+				.filter(predicate).length
+		}];
+
+	else
+		throw new Error(`OmniQuery: unsupported operation '${op}'.`);
+
+	if(mode === "file" && modified) {
+		let fs = require("fs").promises;
+		await fs.writeFile(data.access.url, JSON.stringify(root, null, 2) + "\n");
+	}
+
+	return result;
 }
 
 if(typeof module == "object")
