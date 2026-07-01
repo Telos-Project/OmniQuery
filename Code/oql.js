@@ -97,7 +97,7 @@ module.exports = [
 				`(((context)=>{context.filters.push(
 					{type:"crop",options:{value:[
 				${
-					args.slice[1].map(item => `(${item})`).join(",")
+					args.slice(1).map(item => `(${item})`).join(",")
 				}]}});return context;})(${args[0]}))` :
 				null;
 		},
@@ -123,7 +123,7 @@ module.exports = [
 				`(((context)=>{context.filters.push(
 					{type:"focus",options:{value:[
 				${
-					args.slice[1].map(item => `(${item})`).join(",")
+					args.slice(1).map(item => `(${item})`).join(",")
 				}]}});return context;})(${args[0]}))` :
 				null;
 		},
@@ -167,13 +167,11 @@ module.exports = [
 			return context.local.operator.toLowerCase() == "remove" ?
 				`(Array.isArray(${
 					args[0]
-				})?((${args[0]}).splice(${args[1], 1}))${
-					args.slice(1).map(item => `[${item}]`).join("")
-				}):(((context)=>{
+				})?((${args[0]}).splice(${args[1]}, 1)):((context)=>{
 					context.operation.type="delete";return context;
 				})(${
 					args[0]
-				})))` :
+				}))` :
 				null;
 		},
 		tags: ["oql", "remove"]
@@ -231,7 +229,7 @@ module.exports = [
 				`(Array.isArray(${
 					args[0]
 				})?((${args[0]}).sort()):(((context)=>{
-					context.filters.push({type:"at",options:{value:(${
+					context.filters.push({type:"sort",options:{value:(${
 						args[1]
 					})}});return context;
 				})(${
