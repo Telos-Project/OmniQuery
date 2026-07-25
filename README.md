@@ -274,3 +274,80 @@ dynamic values where every such value is a boolean as its second argument.
 It shall sort contents of the context and return it, where every key in the dynamic list specifies
 the key of a field to sort the contents by, with the order of the values determining sorting
 priority. A value of true means ascending order and a value of false means descending order.
+
+### 2.2 - Usage
+
+OQL may be used as a Fusion LISP dialect, and by extension may be embedded in JavaScript, together
+with SF LISP, via the telos-oql module, as demonstrated here:
+
+```
+
+/*
+
+	Directed at an SQL DB. Equivalent to:
+
+		SELECT AGE FROM PEOPLE_TABLE
+		WHERE F_NAME EQUALS "John";
+
+*/
+
+require("fusion-lisp/fusionLISP.js").run(`
+	(use "fusion-lisp" "telos-oql")
+	(return
+		(query
+			(focus
+				(filter
+					(at
+						(access "${process.env.SQL_CONNECTION_STRING}")
+						"PEOPLE_TABLE"
+					)
+					(equals F_NAME "John")
+				)
+				"AGE"
+			)
+		)
+	)
+`).then(data => console.log(data));
+
+/*
+
+	Directed at Mongo DB.
+
+	Equivalent to:
+
+		const client = new MongoClient(
+			process.env.MONGO_CONNECTION_STRING
+		);
+
+		await client.connect();
+		
+		await client.db(
+			"socialAppDatabase"
+		).collection(
+			"peopleCollection"
+		).insertOne({
+			firstName: "John",
+			lastName: "Doe",
+			age: 30
+		});
+
+*/
+
+require("fusion-lisp/fusionLISP.js").run(`
+	(use "fusion-lisp" "telos-oql")
+	(query
+		(append
+			(at
+				(access "${process.env.MONGO_CONNECTION_STRING}")
+				"socialAppDatabase"
+				"peopleCollection"
+			)
+			(list
+				(: "firstName" "John")
+				(: "lastName" "Doe")
+				(: "age" 30)
+			)
+		)
+	)
+`);
+```
