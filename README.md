@@ -277,11 +277,20 @@ priority. A value of true means ascending order and a value of false means desce
 
 ### 2.2 - Usage
 
+#### 2.2.1 - Compatibility
+
+OmniQuery is compatible with MariaDB, Microsoft SQL Server, MongoDB, MySQL, Oracle Database,
+PostgreSQL, and SQLite.
+
+It can also operate on JSON files on disk, and in JavaScript, in-memory objects, using Mongo-style
+conventions.
+
+#### 2.2.2 - Examples
+
 OQL may be used as a Fusion LISP dialect, and by extension may be embedded in JavaScript, together
 with SF LISP, via the telos-oql module, as demonstrated here:
 
 ```
-
 /*
 
 	Directed at an SQL DB. Equivalent to:
@@ -346,6 +355,54 @@ require("fusion-lisp/fusionLISP.js").run(`
 				(: "firstName" "John")
 				(: "lastName" "Doe")
 				(: "age" 30)
+			)
+		)
+	)
+`);
+
+/*
+
+	Directed at an in-memory object using Mongo-style conventions.
+
+*/
+
+let db = { todos: { } };
+
+require("fusion-lisp/fusionLISP.js").run(`
+	(use "fusion-lisp" "telos-oql")
+	(query
+		(append
+			(at
+				(access (at arguments 0))
+				"data"
+			)
+			(list
+				(: "task" "Implement specification.")
+				(: "complete" true)
+			)
+		)
+	)
+`, [db]);
+
+/*
+
+	Directed at a JSON file using Mongo-style conventions.
+
+	The JSON file will be created if it does not yet exist.
+
+*/
+
+require("fusion-lisp/fusionLISP.js").run(`
+	(use "fusion-lisp" "telos-oql")
+	(query
+		(append
+			(at
+				(access "./db.json")
+				"data"
+			)
+			(list
+				(: "task" "Test implementation.")
+				(: "complete" false)
 			)
 		)
 	)
