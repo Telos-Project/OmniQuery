@@ -133,7 +133,7 @@ within said context; and may have a value with the key "properties", said value 
 list by default, which specifies the system and type properties assigned to the value corresponding
 to the property list in question.
 
-###### 2.1.1.5.2 - Dynamic OQL Queries
+###### 2.1.1.4.2 - Dynamic OQL Queries
 
 A dynamic OQL query is submitted as a meta model list where the property lists thereof may have an
 additional value with the key "query", containing an OQL query to execute upon the resource to
@@ -374,7 +374,7 @@ require("fusion-lisp/fusionLISP.js").run(`
 		(append
 			(at
 				(access (at arguments 0))
-				"data"
+				"todos"
 			)
 			(list
 				(: "task" "Implement specification.")
@@ -398,7 +398,7 @@ require("fusion-lisp/fusionLISP.js").run(`
 		(append
 			(at
 				(access "./db.json")
-				"data"
+				"todos"
 			)
 			(list
 				(: "task" "Test implementation.")
